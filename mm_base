@@ -3,8 +3,8 @@ import bitmex
 import time
 import json
 
-api_key = ''
-api_secret = ''
+api_key = 'Dc0JG9lc-kA7Cu81wVZRSufF'
+api_secret = 'XIzGLQne9z7LWU3tMSfKYoRUakA1x4JfJ2shLfVf2tXPg5ac'
 client = bitmex.bitmex(test=False, api_key=api_key, api_secret=api_secret)
 
 
