@@ -4,7 +4,7 @@ import time
 import datetime
 
 
-TOKEN = '750523354:AAF-Q735tSLb75oNICgyxdmCuCNeXpIbYr9'
+TOKEN = ''
 
 bot = telebot.TeleBot(TOKEN)
 iai_list = []
