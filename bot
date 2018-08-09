@@ -1,0 +1,103 @@
+import telebot
+import subprocess
+import time
+import datetime
+
+
+TOKEN = '750523354:AAF-Q735tSLb75oNICgyxdmCuCNeXpIbYr9'
+
+bot = telebot.TeleBot(TOKEN)
+iai_list = []
+isa_list = []
+test_list = []
+test_list2 = [[], []]
+script_list = [iai_list, isa_list]
+
+
+# запуск iai
+@bot.message_handler(commands=['launch_iai'])
+def launch_iai(message):
+    if iai_list == test_list:
+        bot.reply_to(message, f'script <iai> started!\nat {datetime.datetime.now()}')
+        print('--- Script <iai> is running ---')
+        proc = subprocess.Popen(['python.exe', 'mm_test_iai.py'])
+        iai_list.append(proc)
+    elif iai_list != test_list:
+        bot.reply_to(message, '***script is already running!***')
+
+
+# запуск isa
+@bot.message_handler(commands=['launch_isa'])
+def launch_isa(message):
+    if isa_list == test_list:
+        bot.reply_to(message, f'script <iai> started!\nat {datetime.datetime.now()}')
+        print('--- Script <isa> is running ---')
+        proc = subprocess.Popen(['python.exe', 'mm_test_isa.py'])
+        isa_list.append(proc)
+    elif isa_list != test_list:
+        bot.reply_to(message, '***script is already running!***')
+
+
+# остановка iai
+@bot.message_handler(commands=['stop_iai'])
+def stop_iai(message):
+    if iai_list != test_list:
+        bot.reply_to(message, 'script <iai> stopped!')
+        print('--- Script <iai> is stopped ---')
+        for p in iai_list:
+            p.kill()
+        iai_list.clear()
+    elif iai_list == test_list:
+        bot.reply_to(message, '---script is not running!---')
+
+
+# остановка isa
+@bot.message_handler(commands=['stop_isa'])
+def stop_isa(message):
+    if isa_list != test_list:
+        bot.reply_to(message, 'script <isa> stopped!')
+        print('--- Script <iai> is stopped ---')
+        for p in isa_list:
+            p.kill()
+        isa_list.clear()
+    elif isa_list == test_list:
+        bot.reply_to(message, '---script is not running!---')
+
+
+# остановка всех скриптов
+@bot.message_handler(commands=['kill_all'])
+def kill_all(message):
+    if script_list != test_list2:
+        for li in script_list:
+            for i in li:
+                i.kill()
+                li.clear()
+        bot.reply_to(message, '!!!--- all scripts are stopped ---!!!')
+        print('!!!--- all scripts are stopped ---!!!')
+    elif script_list == test_list2:
+        bot.reply_to(message, 'no running scripts detected')
+
+
+@bot.message_handler(commands=['check_iai'])
+def check_iai(message):
+    for p in iai_list:
+        msg = p.poll()
+        if msg is None:
+            bot.reply_to(message, 'everything is ok')
+        else:
+            bot.reply_to(message, msg)
+
+
+@bot.message_handler(commands=['check_isa'])
+def check_isa(message):
+    for p in isa_list:
+        msg = p.poll()
+        if msg is None:
+            bot.reply_to(message, 'everything is ok')
+        else:
+            bot.reply_to(message, msg)
+
+bot.polling(timeout=60)
+
+
+
