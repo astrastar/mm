@@ -193,3 +193,10 @@ def get_close_order():
 #     print(pos.get('isOpen'), datetime.datetime.now())
 #     time.sleep(5)
 orders(25)
+
+            elif close_qty < abs(qty):
+                # client.Order.Order_cancel(orderID=order_id).result()
+                if qty > 0:
+                    client.Order.Order_amend(orderID=order_id, orderQty=-qty, price=round_price + 1.5).result()
+                elif qty < 0:
+                    client.Order.Order_amend(orderID=order_id, orderQty=-qty, price=round_price - 1.5).result()
