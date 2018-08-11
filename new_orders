@@ -1,0 +1,195 @@
+import datetime
+import bitmex
+import time
+import json
+
+api_key = ''
+api_secret = ''
+client = bitmex.bitmex(api_key=api_key, api_secret=api_secret)
+
+
+def orders(qty1, qty2, qty3, qty4, qty5, qty6, qty7):
+    book = client.OrderBook.OrderBook_getL2(symbol='XBTUSD', depth=1).result()
+    ask = book[0][0].get('price')
+    bid = book[0][1].get('price')
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=-qty1, price=ask + 3.5).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=qty1, price=bid - 3.5).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=-qty2, price=ask + 7).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=qty2, price=bid - 7).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=-qty3, price=ask + 14).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=qty3, price=bid - 14).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=-qty4, price=ask + 28).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=qty4, price=bid - 28).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=-qty5, price=ask + 56).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=qty5, price=bid - 56).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=-qty6, price=ask + 112).result()
+    # client.Order.Order_new(symbol='XBTUSD', orderQty=qty6, price=bid - 112).result()
+    # print('Orders are placed')
+    order = [{'symbol': 'XBTUSD', 'orderQty': -qty1, 'price': ask + 3.5},
+             {'symbol': 'XBTUSD', 'orderQty': qty1, 'price': bid - 3.5},
+             {'symbol': 'XBTUSD', 'orderQty': -qty2, 'price': ask + 7},
+             {'symbol': 'XBTUSD', 'orderQty': -qty2, 'price': bid - 7},
+             {'symbol': 'XBTUSD', 'orderQty': -qty3, 'price': ask + 14},
+             {'symbol': 'XBTUSD', 'orderQty': -qty3, 'price': bid - 14},
+             {'symbol': 'XBTUSD', 'orderQty': -qty4, 'price': ask + 28},
+             {'symbol': 'XBTUSD', 'orderQty': -qty4, 'price': bid - 28},
+             {'symbol': 'XBTUSD', 'orderQty': -qty5, 'price': ask + 56},
+             {'symbol': 'XBTUSD', 'orderQty': -qty5, 'price': bid - 56},
+             {'symbol': 'XBTUSD', 'orderQty': -qty6, 'price': ask + 112},
+             {'symbol': 'XBTUSD', 'orderQty': -qty6, 'price': bid - 112},
+             {'symbol': 'XBTUSD', 'orderQty': -qty7, 'price': ask + 224},
+             {'symbol': 'XBTUSD', 'orderQty': -qty7, 'price': bid - 224}]
+    client.Order.Order_newBulk(orders=json.dumps(order)).result()
+
+
+def order_cancel(side):
+    """
+    :param side: сторона, в которую открыта основная сделка, противоположные ордера отменяются
+    :return:
+    """
+    order_list = client.Order.Order_getOrders(symbol='XBTUSD', count=14, reverse=True).result()[0]
+    if side == 'long':
+        for order in order_list:
+            if order.get('side') == 'Sell':
+                try:
+                    order_id = order.get('orderID')
+                    client.Order.Order_cancel(orderID=order_id).result()
+                except Exception:
+                    pass
+    elif side == 'short':
+        for order in order_list:
+            if order.get('side') == 'Buy':
+                try:
+                    order_id = order.get('orderID')
+                    client.Order.Order_cancel(orderID=order_id).result()
+                except Exception:
+                    pass
+
+
+def check():
+    """
+    проверяет есть ли открытые позиции
+    :return:
+    """
+    pos = client.Position.Position_get().result()
+    return pos[0][0].get('isOpen')
+
+
+def check_op_ords():
+    """
+    проверяет есть ли открытые ордера
+    :return:
+    """
+    orders = client.Order.Order_getOrders(symbol='XBTUSD', count=10, reverse=True).result()[0]
+    for order in orders:
+        if order.get('ordStatus') == 'New':
+            return True
+        else:
+            return False
+
+
+def pos_check():
+    while True:
+        pos = client.Position.Position_get().result()
+        op_cl = pos[0][0].get('isOpen')
+        price = pos[0][0].get('avgEntryPrice')
+        round_price = round(price, 0)
+        qty = pos[0][0].get('currentQty')
+        if op_cl:
+            if qty > 0:
+                order_cancel('long')
+                try:
+                    client.Order.Order_new(symbol='XBTUSD', orderQty=-qty, price=round_price + 1.5).result()
+                    print('Long position is open, sell orders are placed')
+                    break
+                except Exception:
+                    pass
+            elif qty < 0:
+                order_cancel('short')
+                try:
+                    client.Order.Order_new(symbol='XBTUSD', orderQty=-qty, price=round_price - 1.5).result()
+                    print('Short position is open, buy orders are placed')
+                    break
+                except Exception:
+                    pass
+        elif op_cl is False:
+            pass
+        time.sleep(2)
+
+
+def loop():
+    print('start')
+    while True:
+        pos = client.Position.Position_get().result()
+        op_cl = pos[0][0].get('isOpen')
+        price = pos[0][0].get('avgEntryPrice')
+        qty = pos[0][0].get('simpleValue')
+        open_orders = check_op_ords()
+        # print(pos, op_cl, price, qty, open_orders)
+        if op_cl is False and open_orders is False:
+            orders(25)
+            print('Orders are placed')
+        elif op_cl is False and open_orders is True:
+            print('no position')
+            pass
+        elif op_cl:
+            print('3')
+            if qty > 0:
+                order_cancel('long')
+                client.Order.Order_new(symbol='XBTUSD', orderQty=-qty, price=price + 1.5).result()
+                print('sell order is placed')
+            elif qty < 0:
+                order_cancel('short')
+                client.Order.Order_new(symbol='XBTUSD', orderQty=-qty, price=price - 1.5).result()
+                print('buy order is placed')
+        time.sleep(2)
+
+
+def get_close_order():
+    """
+    возвращает размер закрывающего ордера
+    :return:
+    """
+    orders = client.Order.Order_getOrders(symbol='XBTUSD', count=12, reverse=True).result()[0]
+    for order in orders:
+        if order.get('ordStatus') == 'New':
+            order_qty = order.get('orderQty')
+            order_id = order.get('orderID')
+            return order_qty, order_id
+
+
+# while True:
+#     orders(25, 30, 35, 40, 45, 50)
+#     pos_check()
+#     while True:
+#         pos = client.Position.Position_get().result()
+#         op_cl = pos[0][0].get('isOpen')
+#         price = pos[0][0].get('avgEntryPrice')
+#         round_price = round(price, 0)
+#         qty = int(round(pos[0][0].get('currentQty')))
+#         if op_cl:
+#             open_order = client.Order.Order_getOrders(symbol='XBTUSD', count=14, reverse=True,
+#                                                       filter=json.dumps({'ordStatus': 'New'})).result()[0][0]
+#             close_qty = open_order.get('orderQty')
+#             order_id = open_order.get('orderID')
+#             # print(close_qty, order_id)
+#             if close_qty == qty:
+#                 pass
+#             elif close_qty < abs(qty):
+#                 client.Order.Order_cancel(orderID=order_id).result()
+#                 if qty > 0:
+#                     client.Order.Order_new(symbol='XBTUSD', orderQty=-qty, price=round_price + 1.5).result()
+#                 elif qty < 0:
+#                     client.Order.Order_new(symbol='XBTUSD', orderQty=-qty, price=round_price - 1.5).result()
+#         elif op_cl is False:
+#             client.Order.Order_cancelAll().result()
+#             print(f'Position is close at {datetime.datetime.now()}')
+#             time.sleep(2)
+#             break
+#         time.sleep(2)
+
+# while True:
+#     pos = client.Position.Position_get().result()[0][0]
+#     print(pos.get('isOpen'), datetime.datetime.now())
+#     time.sleep(5)
+orders(25)
