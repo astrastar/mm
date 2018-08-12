@@ -1,0 +1,55 @@
+import bitmex
+import telebot
+import datetime
+import time
+import json
+
+iai_api = 'Dc0JG9lc-kA7Cu81wVZRSuf'
+iai_secret = 'XIzGLQne9z7LWU3tMSfKYoRUakA1x4JfJ2shLfVf2tXPg5a'
+iai_client = bitmex.bitmex(test=False, api_key=iai_api, api_secret=iai_secret)
+
+isa_api = 'QqHcjxqekst274OX-ocVk_j'
+isa_secret = '01E0x1dxVDW7GIwUsqaxQhaEFo8550Vz4kdovpY6pq43BIy'
+isa_client = bitmex.bitmex(test=False, api_key=isa_api, api_secret=isa_secret)
+
+token = '661938672:AAGy9G8yWExNgSD2DtvZl5TiXjQ9m7B7kH'
+ticker = 'XBTUSD'
+
+bot = telebot.TeleBot(token)
+
+
+@bot.message_handler(commands=['get_iai'])
+def get_iai(message):
+    pos = iai_client.Position.Position_get().result()
+    op_cl = pos[0][0].get('isOpen')
+    pos_size = pos[0][0].get('currentQty')
+    pos_price = pos[0][0].get('avgEntryPrice')
+    pnl = pos[0][0].get('realisedPnl')
+    print(op_cl)
+    report = f'PnL = {pnl}\n' \
+             f'Pos price = {pos_price}\n' \
+             f'Pos size = {pos_size}'
+    try:
+        bot.reply_to(message, report)
+    except Exception:
+        pass
+
+
+@bot.message_handler(commands=['get_isa'])
+def get_isa(message):
+    pos = isa_client.Position.Position_get().result()
+    op_cl = pos[0][0].get('isOpen')
+    pos_size = pos[0][0].get('currentQty')
+    pos_price = pos[0][0].get('avgEntryPrice')
+    pnl = pos[0][0].get('realisedPnl')
+    print(op_cl)
+    report = f'PnL = {pnl}\n' \
+             f'Pos price = {pos_price}\n' \
+             f'Pos size = {pos_size}'
+    try:
+        bot.reply_to(message, report)
+    except Exception:
+        pass
+
+
+bot.polling(timeout=60)
