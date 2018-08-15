@@ -1,0 +1,125 @@
+# ================ ya =================
+import datetime
+import bitmex
+import time
+import json
+
+ya_key = 'm97gXgKehwcEwPo7mOwhZ54l'
+ya_secret = 'I3-AlTg2REQV_S-nzBPvK3UrAnKh_p2LmcwFTi2P-3ufPXRj'
+client = bitmex.bitmex(test=False, api_key=ya_key, api_secret=ya_secret)
+
+
+def orders(qty1, qty2, qty3, qty4, qty5, qty6, qty7, qty8):
+    book = client.OrderBook.OrderBook_getL2(symbol='XBTUSD', depth=1).result()
+    ask = book[0][0].get('price')
+    bid = book[0][1].get('price')
+    try:
+        order = [{'symbol': 'XBTUSD', 'orderQty': -qty1, 'price': ask + 2},
+                 {'symbol': 'XBTUSD', 'orderQty': qty1, 'price': bid - 2},
+                 {'symbol': 'XBTUSD', 'orderQty': -qty2, 'price': ask + 4},
+                 {'symbol': 'XBTUSD', 'orderQty': qty2, 'price': bid - 4},
+                 {'symbol': 'XBTUSD', 'orderQty': -qty3, 'price': ask + 8},
+                 {'symbol': 'XBTUSD', 'orderQty': qty3, 'price': bid - 8},
+                 {'symbol': 'XBTUSD', 'orderQty': -qty4, 'price': ask + 16},
+                 {'symbol': 'XBTUSD', 'orderQty': qty4, 'price': bid - 16},
+                 {'symbol': 'XBTUSD', 'orderQty': -qty5, 'price': ask + 32},
+                 {'symbol': 'XBTUSD', 'orderQty': qty5, 'price': bid - 32},
+                 {'symbol': 'XBTUSD', 'orderQty': -qty6, 'price': ask + 64},
+                 {'symbol': 'XBTUSD', 'orderQty': qty6, 'price': bid - 64},
+                 {'symbol': 'XBTUSD', 'orderQty': -qty7, 'price': ask + 128},
+                 {'symbol': 'XBTUSD', 'orderQty': qty7, 'price': bid - 128},
+                 {'symbol': 'XBTUSD', 'orderQty': -qty8, 'price': ask + 192},
+                 {'symbol': 'XBTUSD', 'orderQty': qty8, 'price': bid - 192}]
+        client.Order.Order_newBulk(orders=json.dumps(order)).result()
+        print('<ya> Orders are placed')
+    except Exception:
+        pass
+
+
+def order_cancel(side):
+    """
+    :param side: сторона, в которую открыта основная сделка, противоположные ордера отменяются
+    :return:
+    """
+    order_list = client.Order.Order_getOrders(symbol='XBTUSD', count=16, reverse=True).result()[0]
+    if side == 'long':
+        for order in order_list:
+            if order.get('side') == 'Sell':
+                try:
+                    order_id = order.get('orderID')
+                    client.Order.Order_cancel(orderID=order_id).result()
+                except Exception:
+                    pass
+    elif side == 'short':
+        for order in order_list:
+            if order.get('side') == 'Buy':
+                try:
+                    order_id = order.get('orderID')
+                    client.Order.Order_cancel(orderID=order_id).result()
+                except Exception:
+                    pass
+
+
+def pos_check():
+    while True:
+        pos = client.Position.Position_get().result()
+        op_cl = pos[0][0].get('isOpen')
+        price = pos[0][0].get('avgEntryPrice')
+        round_price = round(price, 0)
+        qty = pos[0][0].get('currentQty')
+        if op_cl:
+            if qty > 0:
+                order_cancel('long')
+                try:
+                    client.Order.Order_new(symbol='XBTUSD', orderQty=-qty, price=round_price + 1.5).result()
+                    print(f'<ya> Long position is open at {datetime.datetime.now()}')
+                    break
+                except Exception:
+                    pass
+            elif qty < 0:
+                order_cancel('short')
+                try:
+                    client.Order.Order_new(symbol='XBTUSD', orderQty=-qty, price=round_price - 1.5).result()
+                    print(f'<ya> Short position is open at {datetime.datetime.now()}')
+                    break
+                except Exception:
+                    pass
+        elif op_cl is False:
+            pass
+        time.sleep(2)
+
+
+while True:
+    orders(40, 80, 120, 160, 200, 240, 280, 560)
+    pos_check()
+    while True:
+        pos = client.Position.Position_get().result()
+        op_cl = pos[0][0].get('isOpen')
+        price = pos[0][0].get('avgEntryPrice')
+        round_price = round(price, 0)
+        qty = pos[0][0].get('currentQty')
+        if op_cl:
+            open_order = client.Order.Order_getOrders(symbol='XBTUSD', count=16, reverse=True,
+                                                      filter=json.dumps({'ordStatus': 'New'})).result()[0][0]
+            close_qty = open_order.get('orderQty')
+            order_id = open_order.get('orderID')
+            if close_qty == qty:
+                pass
+            elif close_qty < abs(qty):
+                if qty > 0:
+                    try:
+                        client.Order.Order_amend(orderID=order_id, orderQty=-qty, price=round_price + 1.5).result()
+                    except Exception:
+                        pass
+                elif qty < 0:
+                    try:
+                        client.Order.Order_amend(orderID=order_id, orderQty=-qty, price=round_price - 1.5).result()
+                    except Exception:
+                        pass
+        elif op_cl is False:
+            client.Order.Order_cancelAll().result()
+            print(f'<ya> Position is close at {datetime.datetime.now()}\n=================')
+            time.sleep(2)
+            break
+        time.sleep(2)
+
